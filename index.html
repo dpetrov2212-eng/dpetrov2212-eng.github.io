@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Трекер привычек</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .habit-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; }
+    .completed { background-color: #d1fae5; }
+  </style>
+</head>
+<body class="bg-gray-100 p-4">
+  <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4 text-center">Трекер привычек</h1>
+    <div class="mb-4">
+      <input id="habitInput" type="text" placeholder="Введите привычку" class="w-full p-2 border rounded">
+      <button onclick="addHabit()" class="w-full mt-2 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Добавить</button>
+    </div>
+    <ul id="habitList" class="mb-4"></ul>
+    <button onclick="Telegram.WebApp.close()" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Закрыть</button>
+  </div>
+
+  <script>
+    // Инициализация Telegram Web App
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // Загрузка привычек из localStorage
+    let habits = JSON.parse(localStorage.getItem('habits')) || [];
+
+    // Отображение привычек
+    function renderHabits() {
+      const habitList = document.getElementById('habitList');
+      habitList.innerHTML = '';
+      habits.forEach((habit, index) => {
+        const li = document.createElement('li');
+        li.className = `habit-item ${habit.completed ? 'completed' : ''}`;
+        li.innerHTML = `
+          <span>${habit.name} (${habit.streak} дней)</span>
+          <div>
+            <button onclick="toggleHabit(${index})" class="bg-green-500 text-white px-2 py-1 rounded mr-2">${habit.completed ? 'Отменить' : 'Выполнить'}</button>
+            <button onclick="deleteHabit(${index})" class="bg-red-500 text-white px-2 py-1 rounded">Удалить</button>
+          </div>
+        `;
+        habitList.appendChild(li);
+      });
+    }
+
+    // Добавление новой привычки
+    function addHabit() {
+      const habitInput = document.getElementById('habitInput');
+      const habitName = habitInput.value.trim();
+      if (habitName) {
+        habits.push({ name: habitName, streak: 0, completed: false, lastCompleted: null });
+        habitInput.value = '';
+        saveAndRender();
+        tg.showAlert('Привычка добавлена!');
+      }
+    }
+
+    // Отметка выполнения привычки
+    function toggleHabit(index) {
+      const today = new Date().toISOString().split('T')[0];
+      const habit = habits[index];
+      if (habit.completed && habit.lastCompleted === today) {
+        habit.completed = false;
+        habit.streak = Math.max(0, habit.streak - 1);
+      } else if (!habit.completed) {
+        habit.completed = true;
+        habit.lastCompleted = today;
+        habit.streak += 1;
+      }
+      saveAndRender();
+    }
+
+    // Удаление привычки
+    function deleteHabit(index) {
+      habits.splice(index, 1);
+      saveAndRender();
+    }
+
+    // Сохранение и рендеринг
+    function saveAndRender() {
+      localStorage.setItem('habits', JSON.stringify(habits));
+      renderHabits();
+    }
+
+    // Проверка и сброс статуса выполнения ежедневно
+    function checkDailyReset() {
+      const today = new Date().toISOString().split('T')[0];
+      habits.forEach(habit => {
+        if (habit.lastCompleted !== today) {
+          habit.completed = false;
+        }
+      });
+      saveAndRender();
+    }
+
+    // Инициализация
+    checkDailyReset();
+    renderHabits();
+  </script>
+</body>
+</html>
